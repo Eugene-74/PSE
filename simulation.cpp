@@ -66,17 +66,9 @@ const char* fragmentShaderSource = R"(
     uniform vec3 lightPos;
     uniform vec3 viewPos;
     uniform int fastSqrt;
+    
     uniform vec3 objectColor;
     
-    uniform vec3 centerSphere1;
-    uniform vec3 centerSphere2;
-    uniform vec3 centerSquare1;
-
-    uniform vec3 sizeSphere1;
-    uniform vec3 sizeSphere2;
-    uniform vec3 sizeSquare1;
-
-
     float simpleSqrt(float nbr,float epsilon) {
         float racine = 0;
         int iteration = 0;
@@ -93,7 +85,6 @@ const char* fragmentShaderSource = R"(
         return 1/racine;
     }
 
-    // Approximation de la racine carrée inverse
     float fastInvSqrtAndCorrect(float x) {
         int i = floatBitsToInt(x);
         i = 0x5F3759DF - (i >> 1);
@@ -115,57 +106,70 @@ const char* fragmentShaderSource = R"(
             x = (x + number / x) / 2;
         }
 
-    return 1 / x;
-}
-
-void main()
-{
-    vec3 norm = normalize(Normal);
-    vec3 lightDir = lightPos - FragPos;
-    
-    float lengthSq = dot(lightDir, lightDir);
-    
-    float invLength;
-    if (fastSqrt == 0) {
-        invLength = 1;
+        return 1 / x;
     }
-    else if (fastSqrt == 1) {
-        invLength = 1/sqrt(lengthSq);
+
+    vec3 normaliser(vec3 v) {
+        float lengthSq = dot(v, v);
+        float invLength;
+        if (fastSqrt == 0) {
+            invLength = 1;
+        }
+        else if (fastSqrt == 1) {
+            invLength = 1/sqrt(lengthSq);
+        }
+        else if (fastSqrt == 2) {
+            invLength = fastInvSqrt(lengthSq);
+        } 
+        else if (fastSqrt == 3) {
+            invLength = fastInvSqrtAndCorrect(lengthSq);
+        } 
+        else if (fastSqrt == 4) {
+            invLength = sqrtHerron(lengthSq);
+        }
+        else if (fastSqrt == 5) {
+            invLength = simpleSqrt(lengthSq,0.01);
+        } 
+        else if (fastSqrt == 6) {
+            invLength = simpleSqrt(lengthSq,0.1);
+        }
+        return v * invLength;
     }
-    else if (fastSqrt == 2) {
-        invLength = fastInvSqrt(lengthSq);
-    } 
-    else if (fastSqrt == 3) {
-        invLength = fastInvSqrtAndCorrect(lengthSq);
-    } 
-    else if (fastSqrt == 4) {
-        invLength = sqrtHerron(lengthSq);
+
+    void main()
+    {
+        vec3 norm = normaliser(Normal);
+        vec3 lightDir = lightPos - FragPos;
+        
+        lightDir = normaliser(lightDir);
+
+        float distance = length(lightPos - FragPos);
+        float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.5 * (distance * distance));
+
+        vec3 result = vec3(0.0);
+        vec3 currentLightDir = lightDir;
+        vec3 currentFragPos = FragPos;
+        vec3 currentNorm = norm;
+        float reflectionAttenuation = 1.0; 
+
+        for (int i = 0; i < 3; i++) {
+            float diff = max(dot(currentNorm, currentLightDir), 0.0);
+            vec3 diffuse = attenuation * diff * objectColor * reflectionAttenuation;
+            result += diffuse;
+
+            // Reflect the light direction
+            currentLightDir = reflect(currentLightDir, currentNorm);
+           
+            currentFragPos += currentLightDir * 0.1; 
+            vec3 newNorm = normaliser(currentFragPos - FragPos); 
+            currentNorm = normaliser(mix(currentNorm, newNorm, 0.5)); 
+
+            // Atténuer la réflexion pour le prochain rebond
+            reflectionAttenuation *= 0.5; 
+        }
+
+        FragColor = vec4(result, 1.0);
     }
-    else if (fastSqrt == 5) {
-        invLength = simpleSqrt(lengthSq,0.01);
-    } 
-    else if (fastSqrt == 6) {
-        invLength = simpleSqrt(lengthSq,0.1);
-    }
-    lightDir *= invLength;
-
-    float distance = length(lightPos - FragPos);
-    float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.5 * (distance * distance));
-
-    // Diffuse component for lightDir
-    float diff1 = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse1 = attenuation * diff1 * objectColor;
-
-    // Diffuse component for -lightDir
-    // float diff2 = max(dot(norm, -lightDir), 0.0);
-    // vec3 diffuse2 = (attenuation * diff2 * objectColor)*0.5; 
-    // diffuse2 = vec3(0.0, 0.0, 0.0);
-
-    // Combine both diffuse components
-    vec3 result = diffuse1;
-
-    FragColor = vec4(result, 1);
-}
 )";
 
 GLuint createShader(GLenum type, const char* source) {
@@ -300,6 +304,7 @@ glm::vec3 cameraPos = glm::vec3(2.0f, 0.0f, -2.0f);
 glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 0.0f);
 
 float PlaceSize = 4.0f;
+float wallWidth = 0.1;
 bool mouvLight = false;
 
 glm::vec3 centerSphere1 = glm::vec3(-2.0f, 0.0f, 0.0f);
@@ -634,13 +639,13 @@ int main() {
         unsigned int fastSqrtLoc = glGetUniformLocation(shaderProgram, "fastSqrt");
         unsigned int objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
         
-        // unsigned int centerSphere1Loc = glGetUniformLocation(shaderProgram, "centerSphere1");
-        // unsigned int centerSphere2Loc = glGetUniformLocation(shaderProgram, "centerSphere2");
-        // unsigned int centerSquare1Loc = glGetUniformLocation(shaderProgram, "centerSquare1");
+        unsigned int centerSphere1Loc = glGetUniformLocation(shaderProgram, "centerSphere1");
+        unsigned int centerSphere2Loc = glGetUniformLocation(shaderProgram, "centerSphere2");
+        unsigned int centerSquare1Loc = glGetUniformLocation(shaderProgram, "centerSquare1");
 
-        // unsigned int sizeSphere1Loc = glGetUniformLocation(shaderProgram, "sizeSphere1");
-        // unsigned int sizeSphere2Loc = glGetUniformLocation(shaderProgram, "sizeSphere2");
-        // unsigned int sizeSquare1Loc = glGetUniformLocation(shaderProgram, "sizeSquare1");
+        unsigned int sizeSphere1Loc = glGetUniformLocation(shaderProgram, "sizeSphere1");
+        unsigned int sizeSphere2Loc = glGetUniformLocation(shaderProgram, "sizeSphere2");
+        unsigned int sizeSquare1Loc = glGetUniformLocation(shaderProgram, "sizeSquare1");
 
 
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
@@ -670,7 +675,7 @@ int main() {
         // Mur arrière
         glm::mat4 wallModel = glm::mat4(1.0f);
         wallModel = glm::translate(wallModel, glm::vec3(0.0f, 0.0f, -PlaceSize));
-        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, 1.0f));
+        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, wallWidth));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -678,7 +683,7 @@ int main() {
         // Mur avant
         wallModel = glm::mat4(1.0f);
         wallModel = glm::translate(wallModel, glm::vec3(0.0f, 0.0f, PlaceSize));
-        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, 1.0f));
+        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, wallWidth));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -687,7 +692,7 @@ int main() {
         wallModel = glm::mat4(1.0f);
         wallModel = glm::translate(wallModel, glm::vec3(-PlaceSize, 0.0f, 0.0f));
         wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, 1.0f));
+        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, wallWidth));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -696,7 +701,7 @@ int main() {
         wallModel = glm::mat4(1.0f);
         wallModel = glm::translate(wallModel, glm::vec3(PlaceSize, 0.0f, 0.0f));
         wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, 1.0f));
+        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, wallWidth));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -705,7 +710,7 @@ int main() {
         wallModel = glm::mat4(1.0f);
         wallModel = glm::translate(wallModel, glm::vec3(0.0f, PlaceSize, 0.0f));
         wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, 1.0f));
+        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, wallWidth));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -714,7 +719,7 @@ int main() {
         wallModel = glm::mat4(1.0f);
         wallModel = glm::translate(wallModel, glm::vec3(0.0f, -PlaceSize, 0.0f));
         wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, 1.0f));
+        wallModel = glm::scale(wallModel, glm::vec3(10.0f, 10.0f, wallWidth));
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
         glDrawArrays(GL_TRIANGLES, 0, 36);
