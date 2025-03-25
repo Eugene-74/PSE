@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD 17)
 # Inclure les répertoires d'en-tête
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(C:/msys64/mingw64/include)
-include_directories(C:/msys64/mingw64/include/freetype2)
 
 # Ajouter les répertoires de bibliothèque
 link_directories(${CMAKE_SOURCE_DIR}/lib)
@@ -18,7 +17,6 @@ add_executable(OpenGLTextRendering simulation.cpp glad.c)
 # Lier les bibliothèques
 target_link_libraries(OpenGLTextRendering
     glfw3
-    freetype
     opengl32
     gdi32
 )

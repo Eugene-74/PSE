@@ -9,8 +9,6 @@
 #include <cmath>
 #include <iostream>
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
 
 #include <sstream>
 
@@ -135,26 +133,26 @@ const char* fragmentShaderSource = R"(
         return v * invLength;
     }
 
-    float ShadowCalculation(vec4 fragPosLightSpace)
+    float ShadowCalculation(vec4 fragPosLightSpace, vec3 lightDir)
     {
         vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
         projCoords = projCoords * 0.5 + 0.5;
         float currentDepth = projCoords.z;
         float shadow = 0.0;
-        float bias = 0.005;
+        float bias = max(0.05 * (1.0 - dot(Normal, lightDir)), 0.005);
         int samples = 1; // 3x3 kernel
         float offset = 1.0 / 1024.0; // texture size (assuming 1024)
-        for(int x = -samples; x <= samples; ++x) {
-            for(int y = -samples; y <= samples; ++y) {
-                float closestDepth = texture(shadowMap, projCoords.xy + vec2(x, y)*offset).r;
+        for (int x = -samples; x <= samples; ++x) {
+            for (int y = -samples; y <= samples; ++y) {
+                float closestDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * offset).r;
                 shadow += currentDepth - bias > closestDepth ? 1.0 : 0.0;
             }
         }
         shadow /= 9.0;
-        if(projCoords.z > 1.0)
+        if (projCoords.z > 1.0)
             shadow = 0.0;
         return shadow;
-    }
+    }   
 
     void main()
     {
@@ -172,7 +170,7 @@ const char* fragmentShaderSource = R"(
         vec3 currentNorm = norm;
         float reflectionAttenuation = 1.0; 
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 1; i++) {
             float diff = max(dot(currentNorm, currentLightDir), 0.0);
             vec3 diffuse = attenuation * diff * objectColor * reflectionAttenuation;
             result += diffuse;
@@ -189,7 +187,7 @@ const char* fragmentShaderSource = R"(
         }
 
         // Calcul de l'ombre
-        float shadow = ShadowCalculation(FragPosLightSpace);
+        float shadow = ShadowCalculation(FragPosLightSpace,lightDir);
         result = result * (1.0 - shadow);
 
         FragColor = vec4(result, 1.0);
@@ -652,6 +650,9 @@ int main() {
         }
         oddRow = !oddRow;
     }
+
+    glEnable(GL_DEPTH_TEST);
+
     GLuint sphereVAO, sphereVBO, sphereEBO;
     glGenVertexArrays(1, &sphereVAO);
     glGenBuffers(1, &sphereVBO);
@@ -716,7 +717,8 @@ int main() {
         processInput(window);
         
         // Calcul de la matrice de la lumière
-        glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 20.0f);
+        // glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 20.0f);
+        glm::mat4 lightProjection = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
         glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
