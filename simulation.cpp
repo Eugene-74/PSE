@@ -1,6 +1,3 @@
-// g++ -o mon_projet.exe simulation.cpp glad.c -Iinclude -Llib -lglfw3 -lopengl32 -lgdi32
-// ./simulation.cpp
-// g++ -o mon_projet.exe simulation.cpp glad.c -Iinclude -IC:/msys64/mingw64/include/freetype2 -Llib -LC:/msys64/mingw64/lib -lglfw3 -lfreetype -lopengl32 -lgdi32
 #include "glad/include/glad/glad.h"
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -33,7 +30,6 @@ std::map<int, std::string> fastSqrtModes = {
 
 };
 
-// Shader source
 const char* vertexShaderSource = R"(
 #version 330 core
 layout (location = 0) in vec3 aPos;
@@ -139,15 +135,24 @@ const char* fragmentShaderSource = R"(
         return v * invLength;
     }
 
-    // Fonction de calcul d'ombre simple (sans PCF)
     float ShadowCalculation(vec4 fragPosLightSpace)
     {
-        // Perspective divide
         vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
         projCoords = projCoords * 0.5 + 0.5;
-        float closestDepth = texture(shadowMap, projCoords.xy).r;
         float currentDepth = projCoords.z;
-        float shadow = currentDepth - 0.005 > closestDepth ? 0.5 : 0.0; 
+        float shadow = 0.0;
+        float bias = 0.005;
+        int samples = 1; // 3x3 kernel
+        float offset = 1.0 / 1024.0; // texture size (assuming 1024)
+        for(int x = -samples; x <= samples; ++x) {
+            for(int y = -samples; y <= samples; ++y) {
+                float closestDepth = texture(shadowMap, projCoords.xy + vec2(x, y)*offset).r;
+                shadow += currentDepth - bias > closestDepth ? 1.0 : 0.0;
+            }
+        }
+        shadow /= 9.0;
+        if(projCoords.z > 1.0)
+            shadow = 0.0;
         return shadow;
     }
 
