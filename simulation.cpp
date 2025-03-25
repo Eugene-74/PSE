@@ -41,20 +41,22 @@ layout (location = 1) in vec3 aNormal;
 
 out vec3 FragPos;
 out vec3 Normal;
+out vec4 FragPosLightSpace; // <-- Nouvelle sortie
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 lightSpaceMatrix; // <-- Nouvelle uniform
 
 void main()
 {
-    FragPos = vec3(model * vec4(aPos, 1.0));
+    vec4 worldPos = model * vec4(aPos, 1.0);
+    FragPos = vec3(worldPos);
     Normal = mat3(transpose(inverse(model))) * aNormal;
-    gl_Position = projection * view * vec4(FragPos, 1.0);
+    FragPosLightSpace = lightSpaceMatrix * worldPos; // Transfert pour l'ombre
+    gl_Position = projection * view * worldPos;
 }
 )";
-
-
 
 const char* fragmentShaderSource = R"(
     #version 330 core
@@ -62,12 +64,13 @@ const char* fragmentShaderSource = R"(
     
     in vec3 FragPos;
     in vec3 Normal;
+    in vec4 FragPosLightSpace; // <-- Nouvelle entrée
     
     uniform vec3 lightPos;
     uniform vec3 viewPos;
     uniform int fastSqrt;
-    
     uniform vec3 objectColor;
+    uniform sampler2D shadowMap; // <-- Nouvelle uniform
     
     float simpleSqrt(float nbr,float epsilon) {
         float racine = 0;
@@ -136,6 +139,18 @@ const char* fragmentShaderSource = R"(
         return v * invLength;
     }
 
+    // Fonction de calcul d'ombre simple (sans PCF)
+    float ShadowCalculation(vec4 fragPosLightSpace)
+    {
+        // Perspective divide
+        vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+        projCoords = projCoords * 0.5 + 0.5;
+        float closestDepth = texture(shadowMap, projCoords.xy).r;
+        float currentDepth = projCoords.z;
+        float shadow = currentDepth - 0.005 > closestDepth ? 0.5 : 0.0; 
+        return shadow;
+    }
+
     void main()
     {
         vec3 norm = normaliser(Normal);
@@ -144,7 +159,7 @@ const char* fragmentShaderSource = R"(
         lightDir = normaliser(lightDir);
 
         float distance = length(lightPos - FragPos);
-        float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.5 * (distance * distance));
+        float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.01 * (distance * distance));
 
         vec3 result = vec3(0.0);
         vec3 currentLightDir = lightDir;
@@ -168,9 +183,60 @@ const char* fragmentShaderSource = R"(
             reflectionAttenuation *= 0.5; 
         }
 
+        // Calcul de l'ombre
+        float shadow = ShadowCalculation(FragPosLightSpace);
+        result = result * (1.0 - shadow);
+
         FragColor = vec4(result, 1.0);
     }
 )";
+
+// ******************** Nouveaux shaders pour le shadow mapping ********************
+
+// Shader de profondeur (première passe)
+const char* depthVertexShaderSource = R"(
+#version 330 core
+layout (location = 0) in vec3 aPos;
+uniform mat4 model;
+uniform mat4 lightSpaceMatrix;
+out vec4 FragPosLightSpace;
+void main(){
+    vec4 fragPos = model * vec4(aPos, 1.0);
+    FragPosLightSpace = lightSpaceMatrix * fragPos;
+    gl_Position = FragPosLightSpace;
+}
+)";
+
+const char* depthFragmentShaderSource = R"(
+#version 330 core
+void main(){
+    // Pas de couleur, seule la profondeur est écrite
+}
+)";
+
+// Ajoutez la déclaration suivante avant de l'utiliser :
+GLuint createShader(GLenum type, const char* source);
+
+// Fonction pour créer le programme shader de profondeur
+GLuint createDepthShaderProgram() {
+    GLuint vertexShader = createShader(GL_VERTEX_SHADER, depthVertexShaderSource);
+    GLuint fragmentShader = createShader(GL_FRAGMENT_SHADER, depthFragmentShaderSource);
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    int success;
+    char infoLog[512];
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
+        std::cerr << "Erreur de linkage du programme shader:\n"
+                  << infoLog << "\n";
+    }
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+    return shaderProgram;
+}
 
 GLuint createShader(GLenum type, const char* source) {
     GLuint shader = glCreateShader(type);
@@ -474,6 +540,28 @@ int main() {
 
     GLuint sphereShaderProgram = createSphereShaderProgram();
 
+    // Création de la shadow map
+    const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+    GLuint depthMapFBO;
+    glGenFramebuffers(1, &depthMapFBO);
+    GLuint depthMap;
+    glGenTextures(1, &depthMap);
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = {1.0, 1.0, 1.0, 1.0};
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+    glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    GLuint depthShaderProgram = createDepthShaderProgram();
+
     float smallCubeVertices[] = {
         // Face arrière
         -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
@@ -625,10 +713,42 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
         
+        // Calcul de la matrice de la lumière
+        glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 20.0f);
+        glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+
+        // 1ère passe : rendu de la profondeur depuis la vue de la lumière
+        glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+        glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        glUseProgram(depthShaderProgram);
+        glUniformMatrix4fv(glGetUniformLocation(depthShaderProgram, "lightSpaceMatrix"), 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+        // Dessiner chaque objet avec le shader de profondeur
+        {
+            // ...existing code pour dessiner le cube (par exemple)...
+            glm::mat4 modelDepth = glm::mat4(1.0f);
+            modelDepth = glm::translate(modelDepth, centerSquare1);
+            modelDepth = glm::scale(modelDepth, sizeSquare1);
+            glUniformMatrix4fv(glGetUniformLocation(depthShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelDepth));
+            glBindVertexArray(smallVAO);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+        // ... répéter pour les murs, sphères ... (utilisez des placeholders pour le reste)
+        // ...existing rendering code for depth pass...
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        // 2ème passe : rendu de la scène en couleur avec ombres
+        glViewport(0, 0, windowWidth, windowHeight);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
         glUseProgram(shaderProgram);
-    
+        // Passer la matrice lightSpaceMatrix au shader principal
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightSpaceMatrix"), 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+        // Lier la shadow map sur l'unité de texture 1 et configurer la uniform
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, depthMap);
+        glUniform1i(glGetUniformLocation(shaderProgram, "shadowMap"), 1);
+
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
