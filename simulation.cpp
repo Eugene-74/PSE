@@ -656,17 +656,18 @@ int main() {
         glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, &viewPos[0]);
         glUniform1i(fastSqrtLoc, fastSqrt);
 
-        glm::vec3 objectColor(1.0f, 1.0f, 1.0f);
-        glUniform3fv(objectColorLoc, 1, glm::value_ptr(objectColor));
-        
         glm::vec3 blueColor(0.0f, 0.0f, 1.0f);
         glm::vec3 redColor(1.0f, 0.0f, 0.0f);
         glm::vec3 greenColor(0.0f, 1.0f, 0.0f);
         glm::vec3 whiteColor(1.0f, 1.0f, 1.0f);
         
         
+        glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
+        
         glBindVertexArray(smallVAO);
         glm::mat4 smallCubeModel = glm::mat4(1.0f);
+        glUniform3fv(objectColorLoc, 1, glm::value_ptr(redColor));
+
         smallCubeModel = glm::translate(smallCubeModel, centerSquare1); // Positionner le cube
         smallCubeModel = glm::scale(smallCubeModel, sizeSquare1);
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(smallCubeModel));
@@ -727,14 +728,14 @@ int main() {
 
         glBindVertexArray(sphereVAO);
 
-        // glUniform3fv(objectColorLoc, 1, glm::value_ptr(greenColor));
+        glUniform3fv(objectColorLoc, 1, glm::value_ptr(greenColor));
         glm::mat4 sphereModel1 = glm::mat4(1.0f);
         sphereModel1 = glm::translate(sphereModel1, centerSphere1); // Positionner la sphère
         sphereModel1 = glm::scale(sphereModel1, sizeSphere1);
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sphereModel1));
         glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
-        // glUniform3fv(objectColorLoc, 1, glm::value_ptr(greenColor));
+        glUniform3fv(objectColorLoc, 1, glm::value_ptr(blueColor));
         glm::mat4 sphereModel2 = glm::mat4(1.0f);
         sphereModel2 = glm::translate(sphereModel2, centerSphere2); // Positionner la sphère
         sphereModel2 = glm::scale(sphereModel2,sizeSphere2);
