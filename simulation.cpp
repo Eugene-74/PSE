@@ -41,19 +41,19 @@ layout (location = 1) in vec3 aNormal;
 
 out vec3 FragPos;
 out vec3 Normal;
-out vec4 FragPosLightSpace; // <-- Nouvelle sortie
+out vec4 FragPosLightSpace; 
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-uniform mat4 lightSpaceMatrix; // <-- Nouvelle uniform
+uniform mat4 lightSpaceMatrix; 
 
 void main()
 {
     vec4 worldPos = model * vec4(aPos, 1.0);
     FragPos = vec3(worldPos);
     Normal = mat3(transpose(inverse(model))) * aNormal;
-    FragPosLightSpace = lightSpaceMatrix * worldPos; // Transfert pour l'ombre
+    FragPosLightSpace = lightSpaceMatrix * worldPos; 
     gl_Position = projection * view * worldPos;
 }
 )";
@@ -64,13 +64,13 @@ const char* fragmentShaderSource = R"(
     
     in vec3 FragPos;
     in vec3 Normal;
-    in vec4 FragPosLightSpace; // <-- Nouvelle entrée
+    in vec4 FragPosLightSpace;
     
     uniform vec3 lightPos;
     uniform vec3 viewPos;
     uniform int fastSqrt;
     uniform vec3 objectColor;
-    uniform sampler2D shadowMap; // <-- Nouvelle uniform
+    uniform sampler2D shadowMap;
     
     float simpleSqrt(float nbr,float epsilon) {
         float racine = 0;
@@ -191,9 +191,6 @@ const char* fragmentShaderSource = R"(
     }
 )";
 
-// ******************** Nouveaux shaders pour le shadow mapping ********************
-
-// Shader de profondeur (première passe)
 const char* depthVertexShaderSource = R"(
 #version 330 core
 layout (location = 0) in vec3 aPos;
@@ -736,6 +733,25 @@ int main() {
         }
         // ... répéter pour les murs, sphères ... (utilisez des placeholders pour le reste)
         // ...existing rendering code for depth pass...
+        // Ajout de la profondeur pour la première sphère
+        {
+            glm::mat4 modelDepthSphere1 = glm::mat4(1.0f);
+            modelDepthSphere1 = glm::translate(modelDepthSphere1, centerSphere1);
+            modelDepthSphere1 = glm::scale(modelDepthSphere1, sizeSphere1);
+            glUniformMatrix4fv(glGetUniformLocation(depthShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelDepthSphere1));
+            glBindVertexArray(sphereVAO);
+            glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+        }
+
+        // Ajout de la profondeur pour la deuxième sphère
+        {
+            glm::mat4 modelDepthSphere2 = glm::mat4(1.0f);
+            modelDepthSphere2 = glm::translate(modelDepthSphere2, centerSphere2);
+            modelDepthSphere2 = glm::scale(modelDepthSphere2, sizeSphere2);
+            glUniformMatrix4fv(glGetUniformLocation(depthShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelDepthSphere2));
+            glBindVertexArray(sphereVAO);
+            glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+        }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         // 2ème passe : rendu de la scène en couleur avec ombres
@@ -864,6 +880,47 @@ int main() {
 
         
 
+
+        // sphère
+        glUseProgram(sphereShaderProgram);
+        // Récupérer les emplacements des uniforms requis
+        modelLoc = glGetUniformLocation(sphereShaderProgram, "model");
+        viewLoc = glGetUniformLocation(sphereShaderProgram, "view");
+        projectionLoc = glGetUniformLocation(sphereShaderProgram, "projection");
+        unsigned int lightSpaceLoc = glGetUniformLocation(sphereShaderProgram, "lightSpaceMatrix");
+        unsigned int sphereColorLoc = glGetUniformLocation(sphereShaderProgram, "sphereColor");
+
+        // Passer view, projection et lightSpaceMatrix
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(lightSpaceLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+
+        // Lier la shadow map sur l'unité de texture 1
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, depthMap);
+        glUniform1i(glGetUniformLocation(sphereShaderProgram, "shadowMap"), 1);
+
+        // Dessiner la sphère verte
+        {
+            glm::mat4 sphereModel1 = glm::mat4(1.0f);
+            sphereModel1 = glm::translate(sphereModel1, centerSphere1);
+            sphereModel1 = glm::scale(sphereModel1, sizeSphere1);
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sphereModel1));
+            glUniform3fv(sphereColorLoc, 1, glm::value_ptr(greenColor));
+            glBindVertexArray(sphereVAO);
+            glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+        }
+
+        // Dessiner la sphère bleue
+        {
+            glm::mat4 sphereModel2 = glm::mat4(1.0f);
+            sphereModel2 = glm::translate(sphereModel2, centerSphere2);
+            sphereModel2 = glm::scale(sphereModel2, sizeSphere2);
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sphereModel2));
+            glUniform3fv(sphereColorLoc, 1, glm::value_ptr(blueColor));
+            glBindVertexArray(sphereVAO);
+            glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+        }
 
         // sphère
         glUseProgram(sphereShaderProgram);
