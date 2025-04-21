@@ -141,7 +141,7 @@ const char* fragmentShaderSource = R"(
         float shadow = 0.0;
         float bias = max(0.05 * (1.0 - dot(Normal, lightDir)), 0.005);
         int samples = 1; // 3x3 kernel
-        float offset = 1.0 / 1024.0; // texture size (assuming 1024)
+        float offset = 1.0 / 4096.0; // texture size
         for (int x = -samples; x <= samples; ++x) {
             for (int y = -samples; y <= samples; ++y) {
                 float closestDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * offset).r;
@@ -170,7 +170,7 @@ const char* fragmentShaderSource = R"(
         vec3 currentNorm = norm;
         float reflectionAttenuation = 1.0; 
 
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 3; i++) {
             float diff = max(dot(currentNorm, currentLightDir), 0.0);
             vec3 diffuse = attenuation * diff * objectColor * reflectionAttenuation;
             result += diffuse;
@@ -375,7 +375,7 @@ bool mouvLight = false;
 
 glm::vec3 centerSphere1 = glm::vec3(-2.0f, 0.0f, 0.0f);
 glm::vec3 centerSphere2 = glm::vec3(0.0f, 0.0f, 2.0f);
-glm::vec3 centerSquare1 = glm::vec3(-2.0f, 1.0f, 2.0f);
+glm::vec3 centerSquare1 = glm::vec3(0.0f, 0.0f, 0.0f);
 
 glm::vec3 sizeSphere1 = glm::vec3(1.0f, 1.0f, 1.0f);
 glm::vec3 sizeSphere2 = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -521,8 +521,8 @@ int main() {
     int screenWidth = mode->width;
     int screenHeight = mode->height;
 
-    int windowWidth = 2880 - 100;
-    int windowHeight = 1920 - 200;
+    int windowWidth = 1920 - 100;
+    int windowHeight = 1080 - 100;
     glfwSetWindowSize(window, windowWidth, windowHeight);
 
     int windowPosX = (screenWidth - windowWidth) / 2;
@@ -541,7 +541,7 @@ int main() {
     GLuint sphereShaderProgram = createSphereShaderProgram();
 
     // Création de la shadow map
-    const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+    const unsigned int SHADOW_WIDTH = 4096, SHADOW_HEIGHT = 4096;
     GLuint depthMapFBO;
     glGenFramebuffers(1, &depthMapFBO);
     GLuint depthMap;
