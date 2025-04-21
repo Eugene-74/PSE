@@ -136,6 +136,7 @@ const char* fragmentShaderSource = R"(
     float ShadowCalculation(vec4 fragPosLightSpace, vec3 lightDir)
     {
         vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+
         projCoords = projCoords * 0.5 + 0.5;
         float currentDepth = projCoords.z;
         float shadow = 0.0;
@@ -682,10 +683,8 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, smallVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(smallCubeVertices), smallCubeVertices, GL_STATIC_DRAW);
 
-    // position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    // normal attribute
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
@@ -698,14 +697,11 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, largeVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(smallCubeVertices), smallCubeVertices, GL_STATIC_DRAW);
 
-    // position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    // normal attribute
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    // Définir les positions de la lumière et de la caméra
 
     glm::vec3 viewPos(0.0f, 0.0f, 3.0f);
     
@@ -716,21 +712,16 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
         
-        // Calcul de la matrice de la lumière
-        // glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 20.0f);
         glm::mat4 lightProjection = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
         glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
-        // 1ère passe : rendu de la profondeur depuis la vue de la lumière
         glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
         glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
         glClear(GL_DEPTH_BUFFER_BIT);
         glUseProgram(depthShaderProgram);
         glUniformMatrix4fv(glGetUniformLocation(depthShaderProgram, "lightSpaceMatrix"), 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
-        // Dessiner chaque objet avec le shader de profondeur
         {
-            // ...existing code pour dessiner le cube (par exemple)...
             glm::mat4 modelDepth = glm::mat4(1.0f);
             modelDepth = glm::translate(modelDepth, centerSquare1);
             modelDepth = glm::scale(modelDepth, sizeSquare1);
@@ -738,9 +729,6 @@ int main() {
             glBindVertexArray(smallVAO);
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
-        // ... répéter pour les murs, sphères ... (utilisez des placeholders pour le reste)
-        // ...existing rendering code for depth pass...
-        // Ajout de la profondeur pour la première sphère
         {
             glm::mat4 modelDepthSphere1 = glm::mat4(1.0f);
             modelDepthSphere1 = glm::translate(modelDepthSphere1, centerSphere1);
@@ -750,7 +738,6 @@ int main() {
             glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
         }
 
-        // Ajout de la profondeur pour la deuxième sphère
         {
             glm::mat4 modelDepthSphere2 = glm::mat4(1.0f);
             modelDepthSphere2 = glm::translate(modelDepthSphere2, centerSphere2);
@@ -761,13 +748,10 @@ int main() {
         }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        // 2ème passe : rendu de la scène en couleur avec ombres
         glViewport(0, 0, windowWidth, windowHeight);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(shaderProgram);
-        // Passer la matrice lightSpaceMatrix au shader principal
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightSpaceMatrix"), 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
-        // Lier la shadow map sur l'unité de texture 1 et configurer la uniform
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, depthMap);
         glUniform1i(glGetUniformLocation(shaderProgram, "shadowMap"), 1);
@@ -873,14 +857,14 @@ int main() {
 
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(greenColor));
         glm::mat4 sphereModel1 = glm::mat4(1.0f);
-        sphereModel1 = glm::translate(sphereModel1, centerSphere1); // Positionner la sphère
+        sphereModel1 = glm::translate(sphereModel1, centerSphere1); 
         sphereModel1 = glm::scale(sphereModel1, sizeSphere1);
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sphereModel1));
         glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(blueColor));
         glm::mat4 sphereModel2 = glm::mat4(1.0f);
-        sphereModel2 = glm::translate(sphereModel2, centerSphere2); // Positionner la sphère
+        sphereModel2 = glm::translate(sphereModel2, centerSphere2);
         sphereModel2 = glm::scale(sphereModel2,sizeSphere2);
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sphereModel2));
         glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
@@ -890,19 +874,16 @@ int main() {
 
         // sphère
         glUseProgram(sphereShaderProgram);
-        // Récupérer les emplacements des uniforms requis
         modelLoc = glGetUniformLocation(sphereShaderProgram, "model");
         viewLoc = glGetUniformLocation(sphereShaderProgram, "view");
         projectionLoc = glGetUniformLocation(sphereShaderProgram, "projection");
         unsigned int lightSpaceLoc = glGetUniformLocation(sphereShaderProgram, "lightSpaceMatrix");
         unsigned int sphereColorLoc = glGetUniformLocation(sphereShaderProgram, "sphereColor");
 
-        // Passer view, projection et lightSpaceMatrix
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(lightSpaceLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
 
-        // Lier la shadow map sur l'unité de texture 1
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, depthMap);
         glUniform1i(glGetUniformLocation(sphereShaderProgram, "shadowMap"), 1);
