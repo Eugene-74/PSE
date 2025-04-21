@@ -135,12 +135,16 @@ const char* fragmentShaderSource = R"(
 
     float ShadowCalculation(vec4 fragPosLightSpace, vec3 lightDir)
     {
-        vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+        // vec3 center = vec3(0.0f, 0.0f, 0.0f);
+        // lightDir + center;
+
+        vec3 projCoords = fragPosLightSpace.xyz/ fragPosLightSpace.w;
 
         projCoords = projCoords * 0.5 + 0.5;
         float currentDepth = projCoords.z;
         float shadow = 0.0;
         float bias = max(0.05 * (1.0 - dot(Normal, lightDir)), 0.005);
+        
         int samples = 1; // 3x3 kernel
         float offset = 1.0 / 4096.0; // texture size
         for (int x = -samples; x <= samples; ++x) {
@@ -158,6 +162,8 @@ const char* fragmentShaderSource = R"(
     void main()
     {
         vec3 norm = normaliser(Normal);
+
+
         vec3 lightDir = lightPos - FragPos;
         
         lightDir = normaliser(lightDir);
@@ -202,9 +208,9 @@ uniform mat4 model;
 uniform mat4 lightSpaceMatrix;
 out vec4 FragPosLightSpace;
 void main(){
-    vec4 fragPos = model * vec4(aPos, 1.0);
-    FragPosLightSpace = lightSpaceMatrix * fragPos;
-    gl_Position = FragPosLightSpace;
+    vec4 fragPos = model * vec4(aPos, 1.0); // Position finale après transformation
+    FragPosLightSpace = lightSpaceMatrix * fragPos; // Transformation dans l'espace lumière
+    gl_Position = FragPosLightSpace; // Position finale pour le vertex shader
 }
 )";
 
@@ -376,7 +382,7 @@ bool mouvLight = false;
 
 glm::vec3 centerSphere1 = glm::vec3(-2.0f, 0.0f, 0.0f);
 glm::vec3 centerSphere2 = glm::vec3(0.0f, 0.0f, 2.0f);
-glm::vec3 centerSquare1 = glm::vec3(0.0f, 0.0f, 0.0f);
+glm::vec3 centerSquare1 = glm::vec3(1.0f, 0.0f, 0.0f);
 
 glm::vec3 sizeSphere1 = glm::vec3(1.0f, 1.0f, 1.0f);
 glm::vec3 sizeSphere2 = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -713,13 +719,16 @@ int main() {
         processInput(window);
         
         glm::mat4 lightProjection = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
-        glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+        
 
         glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
         glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
         glClear(GL_DEPTH_BUFFER_BIT);
         glUseProgram(depthShaderProgram);
+
+        glm::vec3 centeredLightPos = lightPos - centerSquare1;
+        glm::mat4 lightView = glm::lookAt(centeredLightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
         glUniformMatrix4fv(glGetUniformLocation(depthShaderProgram, "lightSpaceMatrix"), 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
         {
             glm::mat4 modelDepth = glm::mat4(1.0f);
