@@ -1,33 +1,15 @@
-#include "glad/include/glad/glad.h"
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <iostream>
-#include <vector>
-#include <xmmintrin.h>
-#include <cmath>
-#include <iostream>
+#include "simulation.hpp"
 
-
-#include <sstream>
-
-#include <map>
-#include <string>
-
-std::map<int, std::string> fastSqrtModes = {
+std::map<int, std::string> SQRT_MODES = {
     {0, "rien"},
     {1, "sqrt"},
     {2, "bit shift"},
     {3, "bit shift and correct"},
     {4, "Herron"},
-    {5, "simple : 0.01"},
-    {6, "simple : 0.1"}
-
-
-
+    {5, "simple"}
 };
 
+// Déclaration de la fonction pour le shader de profondeur
 const char* vertexShaderSource = R"(
 #version 330 core
 layout (location = 0) in vec3 aPos;
@@ -52,6 +34,7 @@ void main()
 }
 )";
 
+// Déclaration de la fonction pour le shader de réflexion
 const char* fragmentShaderSource = R"(
     #version 330 core
     out vec4 FragColor;
@@ -147,7 +130,6 @@ const char* fragmentShaderSource = R"(
         int samples = 2; // 5x5 kernel
         float offset = 1.0 / 4096.0; // Taille de la texture d'ombre
 
-        // Filtrage PCF
         for (int x = -samples; x <= samples; ++x) {
             for (int y = -samples; y <= samples; ++y) {
                 float closestDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * offset).r;
@@ -182,18 +164,15 @@ const char* fragmentShaderSource = R"(
             vec3 diffuse = attenuation * diff * objectColor * reflectionAttenuation;
             result += diffuse;
 
-            // Reflect the light direction
             currentLightDir = reflect(currentLightDir, currentNorm);
            
             currentFragPos += currentLightDir * 0.1; 
             vec3 newNorm = normaliser(currentFragPos - FragPos); 
             currentNorm = normaliser(mix(currentNorm, newNorm, 0.5)); 
 
-            // Atténuer la réflexion pour le prochain rebond
             reflectionAttenuation *= 0.5; 
         }
 
-        // Calcul de l'ombre
         float shadow = ShadowCalculation(FragPosLightSpace,lightDir);
         result = result * (1.0 - shadow);
 
@@ -201,6 +180,7 @@ const char* fragmentShaderSource = R"(
     }
 )";
 
+// Déclaration de la fonction pour le shader de profondeur
 const char* depthVertexShaderSource = R"(
 #version 330 core
 layout (location = 0) in vec3 aPos;
@@ -208,12 +188,13 @@ uniform mat4 model;
 uniform mat4 lightSpaceMatrix;
 out vec4 FragPosLightSpace;
 void main(){
-    vec4 fragPos = model * vec4(aPos, 1.0); // Position finale après transformation
-    FragPosLightSpace = lightSpaceMatrix * fragPos; // Transformation dans l'espace lumière
-    gl_Position = FragPosLightSpace; // Position finale pour le vertex shader
+    vec4 fragPos = model * vec4(aPos, 1.0);
+    FragPosLightSpace = lightSpaceMatrix * fragPos;
+    gl_Position = FragPosLightSpace;
 }
 )";
 
+// Déclaration de la fonction pour le shader de profondeur
 const char* depthFragmentShaderSource = R"(
 #version 330 core
 void main(){
@@ -221,8 +202,6 @@ void main(){
 }
 )";
 
-// Ajoutez la déclaration suivante avant de l'utiliser :
-GLuint createShader(GLenum type, const char* source);
 
 // Fonction pour créer le programme shader de profondeur
 GLuint createDepthShaderProgram() {
@@ -245,6 +224,7 @@ GLuint createDepthShaderProgram() {
     return shaderProgram;
 }
 
+// Fonction pour créer un shader
 GLuint createShader(GLenum type, const char* source) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, nullptr);
@@ -297,7 +277,7 @@ GLFWwindow* initOpenGL() {
 }
 
 
-
+// Fragment shader pour la sphère
 const char* sphereFragmentShaderSource = R"(
     #version 330 core
     out vec4 FragColor;
@@ -308,6 +288,7 @@ const char* sphereFragmentShaderSource = R"(
     }
     )";
     
+// Fonction pour créer le programme shader de la sphère
 GLuint createSphereShaderProgram() {
     const char* vertexShaderSource = R"(
     #version 330 core
@@ -347,6 +328,7 @@ GLuint createSphereShaderProgram() {
     return shaderProgram;
 }
 
+// Fonction pour créer le programme shader principal
 GLuint createShaderProgram() {
     GLuint vertexShader = createShader(GL_VERTEX_SHADER, vertexShaderSource);
     GLuint fragmentShader = createShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
@@ -371,7 +353,6 @@ GLuint createShaderProgram() {
     return shaderProgram;
 }
 
-
 glm::vec3 cameraPos = glm::vec3(2.0f, 0.0f, -2.0f);
 glm::vec3 lightPos = glm::vec3(0.0f, 2.0f, 0.0f);
 
@@ -379,13 +360,13 @@ float PlaceSize = 5.0f;
 float wallWidth = 0.001;
 bool mouvLight = false;
 
-bool square = false;
+bool square = true;
 glm::vec3 color(0.0f, 0.0f, 1.0f);
 
 glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 size = glm::vec3(1.0f, 1.0f, 1.0f);
 
-int fastSqrt = 0;
+int fastSqrt = 1;
 
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -396,6 +377,7 @@ float yaw = -90.0f, pitch = 0.0f;
 bool firstMouse = true;
 float sensitivity = 0.1f;
 
+// Fonction pour déplacer un objet dans l'espace 3D
 glm::vec3 move(glm::vec3 toMove, glm::vec3 direction) {
     glm::vec3 newToMove = toMove + direction;
     float PlaceSizeWithBorder = PlaceSize - 0.2f;
@@ -422,6 +404,7 @@ glm::vec3 move(glm::vec3 toMove, glm::vec3 direction) {
     return newToMove;
 }
 
+// Fonction pour traiter les entrées de l'utilisateur
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
@@ -478,9 +461,9 @@ void processInput(GLFWwindow *window) {
         mouvLight = true;
     if (glfwGetKey(window, GLFW_KEY_E)== GLFW_PRESS)
         mouvLight = false;
-
 }
 
+// Fonction de callback pour le défilement de la souris (molette)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS) {
         cameraSpeed += yoffset * 0.0001f;
@@ -489,6 +472,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     }
 }
 
+// Fonction de callback pour la souris
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     if (firstMouse) {
         lastX = xpos;
@@ -519,6 +503,8 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     cameraFront = glm::normalize(front);
 }
 
+
+// Fonction pour afficher le nombre d'images par seconde (FPS) dans le titre de la fenêtre et le mode actuellement utilisé
 void displayFPS(GLFWwindow* window) {
     static double previousSeconds = 0.0;
     static int frameCount = 0;
@@ -530,16 +516,16 @@ void displayFPS(GLFWwindow* window) {
         double fps = (double)frameCount / elapsedSeconds;
         std::ostringstream ss;
         ss.precision(3);    
-        ss << std::fixed << fps << " FPS"<<" :: mode : "<<fastSqrtModes[fastSqrt];
+        ss << std::fixed << fps << " FPS"<<" :: mode : "<<SQRT_MODES[fastSqrt];
         glfwSetWindowTitle(window, ss.str().c_str());
         frameCount = 0;
     }
     frameCount++;
 }
 
-int main() {
-    GLFWwindow* window = initOpenGL();
 
+
+bool startWindow(GLFWwindow* window){
     const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
     int screenWidth = mode->width;
     int screenHeight = mode->height;
@@ -905,4 +891,11 @@ int main() {
 
     glfwTerminate();
     return 0;
+}
+
+
+int main() {
+    GLFWwindow* window = initOpenGL();
+    return startWindow(window);
+    
 }
