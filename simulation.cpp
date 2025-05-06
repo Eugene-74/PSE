@@ -706,6 +706,122 @@ void Simulation::createObject(unsigned int modelLoc, unsigned int objectColorLoc
         glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
     }
 }
+void Simulation::createWalls(unsigned int modelLoc, unsigned int objectColorLoc){
+
+    glm::vec3 whiteColor(1.0f, 1.0f, 1.0f);
+        
+    glBindVertexArray(smallVAO);
+    // Mur arrière
+    glm::mat4 wallModel = glm::mat4(1.0f);
+    wallModel = glm::translate(wallModel, glm::vec3(0.0f, 0.0f, -PlaceSize));
+    wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
+    glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Mur avant
+    wallModel = glm::mat4(1.0f);
+    wallModel = glm::translate(wallModel, glm::vec3(0.0f, 0.0f, PlaceSize));
+    wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
+    glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Mur gauche
+    wallModel = glm::mat4(1.0f);
+    wallModel = glm::translate(wallModel, glm::vec3(-PlaceSize, 0.0f, 0.0f));
+    wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
+    glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Mur droit
+    wallModel = glm::mat4(1.0f);
+    wallModel = glm::translate(wallModel, glm::vec3(PlaceSize, 0.0f, 0.0f));
+    wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
+    glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Plafond
+    wallModel = glm::mat4(1.0f);
+    wallModel = glm::translate(wallModel, glm::vec3(0.0f, PlaceSize, 0.0f));
+    wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
+    glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // Sol
+    wallModel = glm::mat4(1.0f);
+    wallModel = glm::translate(wallModel, glm::vec3(0.0f, -PlaceSize, 0.0f));
+    wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
+    glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+void Simulation::createWallAndObject(){
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
+
+    unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
+    unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
+    unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+    unsigned int sqrtModeLoc = glGetUniformLocation(shaderProgram, "sqrtMode");
+    unsigned int objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    
+    glUniform3fv(glGetUniformLocation(shaderProgram, "lightPos"), 1, &lightPos[0]);
+    glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, &viewPos[0]);
+    glUniform1i(sqrtModeLoc, sqrtMode);
+
+    
+    createObject(modelLoc, objectColorLoc);
+    
+    createWalls(modelLoc, objectColorLoc);
+}
+
+void Simulation::createLightShere(){
+    glUseProgram(sphereShaderProgram);
+
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
+
+    unsigned int modelLoc = glGetUniformLocation(sphereShaderProgram, "model");
+    unsigned int viewLoc = glGetUniformLocation(sphereShaderProgram, "view");
+    unsigned int projectionLoc = glGetUniformLocation(sphereShaderProgram, "projection");
+    unsigned int lightSpaceLoc = glGetUniformLocation(sphereShaderProgram, "lightSpaceMatrix");
+    unsigned int sphereColorLoc = glGetUniformLocation(sphereShaderProgram, "sphereColor");
+
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(lightSpaceLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, depthMap);
+    glUniform1i(glGetUniformLocation(sphereShaderProgram, "shadowMap"), 1);
+
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    glBindVertexArray(sphereVAO);
+    glm::mat4 sphereModel = glm::mat4(1.0f);
+    sphereModel = glm::translate(sphereModel, glm::vec3(lightPos)); // Positionner la sphère
+    sphereModel = glm::scale(sphereModel, glm::vec3(0.1f, 0.1f, 0.1f));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sphereModel));
+    glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+
+}
 
 Simulation::Simulation(GLFWwindow* window, int windowWidth, int windowHeight) : window(window), windowWidth(windowWidth), windowHeight(windowHeight) {
     glfwSetCursorPosCallback(window, mouse_callback);
@@ -717,8 +833,6 @@ Simulation::Simulation(GLFWwindow* window, int windowWidth, int windowHeight) : 
 
     createSphereVAOandVBOandEBO();
     createCubeVAOandVBO();
-
-    glm::vec3 viewPos(0.0f, 0.0f, 3.0f);
 
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
@@ -734,111 +848,9 @@ Simulation::Simulation(GLFWwindow* window, int windowWidth, int windowHeight) : 
         glUseProgram(shaderProgram);
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "lightSpaceMatrix"), 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
 
-        glm::mat4 model = glm::mat4(1.0f);
-        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
+        createWallAndObject();
 
-        unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
-        unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
-        unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-        unsigned int sqrtModeLoc = glGetUniformLocation(shaderProgram, "sqrtMode");
-        unsigned int objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
-
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-        
-        glUniform3fv(glGetUniformLocation(shaderProgram, "lightPos"), 1, &lightPos[0]);
-        glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, &viewPos[0]);
-        glUniform1i(sqrtModeLoc, sqrtMode);
-
-        
-        createObject(modelLoc, objectColorLoc);
-        
-        glm::vec3 whiteColor(1.0f, 1.0f, 1.0f);
-        glBindVertexArray(smallVAO);
-
-
-        // Mur arrière
-        glm::mat4 wallModel = glm::mat4(1.0f);
-        wallModel = glm::translate(wallModel, glm::vec3(0.0f, 0.0f, -PlaceSize));
-        wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
-        glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        // Mur avant
-        wallModel = glm::mat4(1.0f);
-        wallModel = glm::translate(wallModel, glm::vec3(0.0f, 0.0f, PlaceSize));
-        wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
-        glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        // Mur gauche
-        wallModel = glm::mat4(1.0f);
-        wallModel = glm::translate(wallModel, glm::vec3(-PlaceSize, 0.0f, 0.0f));
-        wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
-        glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        // Mur droit
-        wallModel = glm::mat4(1.0f);
-        wallModel = glm::translate(wallModel, glm::vec3(PlaceSize, 0.0f, 0.0f));
-        wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
-        glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        // Plafond
-        wallModel = glm::mat4(1.0f);
-        wallModel = glm::translate(wallModel, glm::vec3(0.0f, PlaceSize, 0.0f));
-        wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
-        glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        // Sol
-        wallModel = glm::mat4(1.0f);
-        wallModel = glm::translate(wallModel, glm::vec3(0.0f, -PlaceSize, 0.0f));
-        wallModel = glm::rotate(wallModel, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        wallModel = glm::scale(wallModel, glm::vec3(PlaceSize * 2, PlaceSize * 2, wallWidth));
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(wallModel));
-        glUniform3fv(objectColorLoc, 1, glm::value_ptr(whiteColor));
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        
-
-        // sphère
-        glUseProgram(sphereShaderProgram);
-        modelLoc = glGetUniformLocation(sphereShaderProgram, "model");
-        viewLoc = glGetUniformLocation(sphereShaderProgram, "view");
-        projectionLoc = glGetUniformLocation(sphereShaderProgram, "projection");
-        unsigned int lightSpaceLoc = glGetUniformLocation(sphereShaderProgram, "lightSpaceMatrix");
-        unsigned int sphereColorLoc = glGetUniformLocation(sphereShaderProgram, "sphereColor");
-
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(lightSpaceLoc, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, depthMap);
-        glUniform1i(glGetUniformLocation(sphereShaderProgram, "shadowMap"), 1);
-
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-    
-        glBindVertexArray(sphereVAO);
-        glm::mat4 sphereModel = glm::mat4(1.0f);
-        sphereModel = glm::translate(sphereModel, glm::vec3(lightPos)); // Positionner la sphère
-        sphereModel = glm::scale(sphereModel, glm::vec3(0.1f, 0.1f, 0.1f));
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sphereModel));
-        glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+        createLightShere();
 
         // Display FPS
         displayFPS(window);

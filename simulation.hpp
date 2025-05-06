@@ -50,14 +50,15 @@ class Simulation {
     
     glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::vec3 size = glm::vec3(1.0f, 1.0f, 1.0f);
-    // glm::vec3 color(0.0f, 0.0f, 1.0f);
 
     float PlaceSize = 5.0f;
     float wallWidth = 0.001;
 
     glm::vec3 cameraPos = glm::vec3(2.0f, 0.0f, -2.0f);
     glm::vec3 lightPos = glm::vec3(0.0f, 2.0f, 0.0f);
+    glm::vec3 viewPos = glm::vec3(0.0f, 0.0f, 3.0f);
     bool mouvLight = false;
+
 
 
     int sqrtMode = 1;
@@ -88,7 +89,13 @@ class Simulation {
     void setLightSpaceMatrix();
 
     void createDepthObject();
+
     void createObject(unsigned int modelLoc, unsigned int objectColorLoc);
+    void createWalls(unsigned int modelLoc, unsigned int objectColorLoc);
+    void createWallAndObject();
+
+    void createLightShere();
+
 
 };
 
