@@ -62,7 +62,7 @@ float simpleSqrt(float nbr, float epsilon) {
         i -= 1;
         racine += i * epsilon;
     }
-    // std ::cerr << "Nombre d'itération :" << iteration << std::endl;
+    std ::cerr << "Nombre d'itération :" << iteration << std::endl;
     return racine;
 }
 

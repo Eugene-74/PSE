@@ -21,6 +21,8 @@ def racine_simple_approximation(nbr,approximation):
     print("Nombre d'itération :",iteration)
     return racine
 
+
+
 #ELLE correspond a peu pres a ça en C:
 def sqrtC(n, epsilon=10):
     if n < 0:
