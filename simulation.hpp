@@ -14,8 +14,10 @@
 #include <map>
 #include <string>
 
+
 GLFWwindow* initOpenGL() ;
 bool startWindow(GLFWwindow* window);
+
 
 
 GLuint createDepthShaderProgram();
@@ -23,11 +25,72 @@ GLuint createShader(GLenum type, const char* source);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) ;
 GLuint createSphereShaderProgram() ;
 GLuint createShaderProgram() ;
-glm::vec3 move(glm::vec3 toMove, glm::vec3 direction) ;
-void processInput(GLFWwindow *window) ;
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) ;
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) ;
-void displayFPS(GLFWwindow* window) ;
+
+
+
+
+class Simulation {
+    public:
+    Simulation (GLFWwindow* window, int windowWidth, int windowHeight);
+
+    
+    private:
+
+
+    int windowWidth = 0;
+    int windowHeight = 0;
+    GLFWwindow* window = nullptr;
+
+    const unsigned int SHADOW_WIDTH = 4096, SHADOW_HEIGHT = 4096;
+
+    
+    bool square = false;
+    
+    glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 size = glm::vec3(1.0f, 1.0f, 1.0f);
+    // glm::vec3 color(0.0f, 0.0f, 1.0f);
+
+    float PlaceSize = 5.0f;
+    float wallWidth = 0.001;
+
+    glm::vec3 cameraPos = glm::vec3(2.0f, 0.0f, -2.0f);
+    glm::vec3 lightPos = glm::vec3(0.0f, 2.0f, 0.0f);
+    bool mouvLight = false;
+
+
+    int sqrtMode = 1;
+
+
+    std::vector<unsigned int> sphereIndices;
+
+    GLuint depthMap;
+    GLuint depthMapFBO;
+    GLuint smallVBO, smallVAO;
+    GLuint sphereVAO, sphereVBO, sphereEBO;
+
+    glm::mat4 lightSpaceMatrix;
+
+    GLuint shaderProgram = createShaderProgram();
+    GLuint sphereShaderProgram = createSphereShaderProgram();
+    GLuint depthShaderProgram = createDepthShaderProgram();
+
+
+    glm::vec3 move(glm::vec3 toMove, glm::vec3 direction) ;
+    void processInput(GLFWwindow *window) ;
+    void displayFPS(GLFWwindow* window) ;
+
+    void createDepthMap();
+    void createCubeVAOandVBO();
+    void createSphereVAOandVBOandEBO();
+
+    void setLightSpaceMatrix();
+
+    void createDepthObject();
+    void createObject(unsigned int modelLoc, unsigned int objectColorLoc);
+
+};
 
 
 
