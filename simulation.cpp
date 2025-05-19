@@ -49,25 +49,6 @@ const char* fragmentShaderSource = R"(
     uniform vec3 objectColor;
     uniform sampler2D shadowMap;
     
-    float simpleSqrt(float nbr) {
-        float racine = sqrt(nbr);
-        // int i = 0;
-        // int j = 0;
-
-        // while (j < 1) {
-        //     if ((racine + i * pow(10, -j)) * (racine + i * pow(10, -j)) > nbr) {
-        //         i -= 1;
-        //         racine += i * pow(10, -j);
-        //         j += 1;
-        //         i = 0;
-        //     } else {
-        //         i += 1;
-        //     }
-        // }
-
-        return 1/racine;
-    }
-
     float fastInvSqrtAndCorrect(float x) {
         int i = floatBitsToInt(x);
         i = 0x5F3759DF - (i >> 1);
@@ -110,9 +91,6 @@ const char* fragmentShaderSource = R"(
         else if (sqrtMode == 4) {
             invLength = sqrtHerron(lengthSq);
         }
-        else if (sqrtMode == 5) {
-            invLength = simpleSqrt(lengthSq);
-        } 
         return v * invLength;
     }
 
@@ -125,7 +103,7 @@ const char* fragmentShaderSource = R"(
 
         float currentDepth = projCoords.z;
         float shadow = 0.0;
-        float bias = max(0.005 * (1.0 - dot(Normal, lightDir)), 0.0005);
+        float bias = max(0.05 * (1.0 - dot(Normal, lightDir)), 0.005);
 
         int samples = 2; // 5x5 kernel
         float offset = 1.0 / 4096.0; // Taille de la texture d'ombre
@@ -133,7 +111,7 @@ const char* fragmentShaderSource = R"(
         for (int x = -samples; x <= samples; ++x) {
             for (int y = -samples; y <= samples; ++y) {
                 float closestDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * offset).r;
-                shadow += currentDepth - bias > closestDepth ? 1.0 : 0.0;
+                shadow += currentDepth - bias  > closestDepth ? 1.0 : 0.0;
             }
         }
         shadow /= (samples * 2 + 1) * (samples * 2 + 1);
@@ -151,7 +129,7 @@ const char* fragmentShaderSource = R"(
         lightDir = normaliser(lightDir);
 
         float distance = length(lightPos - FragPos);
-        float attenuation = 1.0 / (1.0 + 0.1 * distance + 0.01 * (distance * distance));
+        float attenuation = 1.0 / (1.0 + 0.05 * distance + 0.005 * (distance * distance));
 
         vec3 result = vec3(0.0);
         vec3 currentLightDir = lightDir;
@@ -367,6 +345,7 @@ float sensitivity = 0.1f;
 
 // Fonction pour déplacer un objet dans l'espace 3D
 glm::vec3 Simulation::move(glm::vec3 toMove, glm::vec3 direction) {
+    float border =  1.0f;
     glm::vec3 newToMove = toMove + direction;
     float PlaceSizeWithBorder = PlaceSize - 0.2f;
     if (newToMove.x > PlaceSizeWithBorder) newToMove.x = PlaceSizeWithBorder;
@@ -376,16 +355,16 @@ glm::vec3 Simulation::move(glm::vec3 toMove, glm::vec3 direction) {
     if (newToMove.z > PlaceSizeWithBorder) newToMove.z = PlaceSizeWithBorder;
     if (newToMove.z < -PlaceSizeWithBorder) newToMove.z = -PlaceSizeWithBorder;
 
-    if (square) {
-        if (abs(newToMove.x - center.x) < size.x && abs(newToMove.y - center.y) < size.y && abs(newToMove.z - center.z) < size.z) {
-            newToMove = toMove;
-        }
-
-    } else {
+    if (square == 0) {
         glm::vec3 diff = newToMove - center;
         float distance = glm::length(diff);
-        if (distance < size.x) {
-            newToMove = center + glm::normalize(diff) * size.x;
+        if (distance < size.x + border) { // Ajout d'une bordure de 0.2 unités autour de la sphère
+            newToMove = center + glm::normalize(diff) * (size.x + border);
+        }
+        
+    } else{
+        if (abs(newToMove.x - center.x) < size.x + border && abs(newToMove.y - center.y) < size.y + border && abs(newToMove.z - center.z) < size.z + border) {
+            newToMove = toMove;
         }
     }
 
@@ -443,8 +422,18 @@ void Simulation::processInput(GLFWwindow *window) {
         sqrtMode = 3;
     if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
         sqrtMode = 4;
-    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS)
-        sqrtMode = 5;
+    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS){
+        square = 0;
+        lightPos = initialLightPos; 
+    }
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS){
+        square = 1;
+        lightPos = initialLightPos; 
+    }
+    if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS){
+        square = 2;
+        lightPos = initialLightPos; 
+    }
     if (glfwGetKey(window, GLFW_KEY_Q)== GLFW_PRESS)
         mouvLight = true;
     if (glfwGetKey(window, GLFW_KEY_E)== GLFW_PRESS)
@@ -530,54 +519,55 @@ void Simulation::createDepthMap(){
 }
 
 void Simulation::createCubeVAOandVBO(){
+    float cubeSize = 1.0f;
     float cubeVertices[] = {
         // Face arrière
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f,
+        -cubeSize, -cubeSize, -cubeSize, 0.0f, 0.0f, -2*cubeSize,
+        cubeSize, -cubeSize, -cubeSize, 0.0f, 0.0f, -2*cubeSize,
+        cubeSize, cubeSize, -cubeSize, 0.0f, 0.0f, -2*cubeSize,
+        cubeSize, cubeSize, -cubeSize, 0.0f, 0.0f, -2*cubeSize,
+        -cubeSize, cubeSize, -cubeSize, 0.0f, 0.0f, -2*cubeSize,
+        -cubeSize, -cubeSize, -cubeSize, 0.0f, 0.0f, -2*cubeSize,
 
         // Face avant
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f,
+        -cubeSize, -cubeSize, cubeSize, 0.0f, 0.0f, 2*cubeSize,
+        cubeSize, -cubeSize, cubeSize, 0.0f, 0.0f, 2*cubeSize,
+        cubeSize, cubeSize, cubeSize, 0.0f, 0.0f, 2*cubeSize,
+        cubeSize, cubeSize, cubeSize, 0.0f, 0.0f, 2*cubeSize,
+        -cubeSize, cubeSize, cubeSize, 0.0f, 0.0f, 2*cubeSize,
+        -cubeSize, -cubeSize, cubeSize, 0.0f, 0.0f, 2*cubeSize,
 
         // Face gauche
-        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, -1.0f, 0.0f, 0.0f,
+        -cubeSize, cubeSize, cubeSize, -2*cubeSize, 0.0f, 0.0f,
+        -cubeSize, cubeSize, -cubeSize, -2*cubeSize, 0.0f, 0.0f,
+        -cubeSize, -cubeSize, -cubeSize, -2*cubeSize, 0.0f, 0.0f,
+        -cubeSize, -cubeSize, -cubeSize, -2*cubeSize, 0.0f, 0.0f,
+        -cubeSize, -cubeSize, cubeSize, -2*cubeSize, 0.0f, 0.0f,
+        -cubeSize, cubeSize, cubeSize, -2*cubeSize, 0.0f, 0.0f,
 
         // Face droite
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
+        cubeSize, cubeSize, cubeSize, 2*cubeSize, 0.0f, 0.0f,
+        cubeSize, cubeSize, -cubeSize, 2*cubeSize, 0.0f, 0.0f,
+        cubeSize, -cubeSize, -cubeSize, 2*cubeSize, 0.0f, 0.0f,
+        cubeSize, -cubeSize, -cubeSize, 2*cubeSize, 0.0f, 0.0f,
+        cubeSize, -cubeSize, cubeSize, 2*cubeSize, 0.0f, 0.0f,
+        cubeSize, cubeSize, cubeSize, 2*cubeSize, 0.0f, 0.0f,
 
         // Face inférieure
-        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, -1.0f, 0.0f,
+        -cubeSize, -cubeSize, -cubeSize, 0.0f, -2*cubeSize, 0.0f,
+        cubeSize, -cubeSize, -cubeSize, 0.0f, -2*cubeSize, 0.0f,
+        cubeSize, -cubeSize, cubeSize, 0.0f, -2*cubeSize, 0.0f,
+        cubeSize, -cubeSize, cubeSize, 0.0f, -2*cubeSize, 0.0f,
+        -cubeSize, -cubeSize, cubeSize, 0.0f, -2*cubeSize, 0.0f,
+        -cubeSize, -cubeSize, -cubeSize, 0.0f, -2*cubeSize, 0.0f,
 
         // Face supérieure
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f};
+        -cubeSize, cubeSize, -cubeSize, 0.0f, 2*cubeSize, 0.0f,
+        cubeSize, cubeSize, -cubeSize, 0.0f, 2*cubeSize, 0.0f,
+        cubeSize, cubeSize, cubeSize, 0.0f, 2*cubeSize, 0.0f,
+        cubeSize, cubeSize, cubeSize, 0.0f, 2*cubeSize, 0.0f,
+        -cubeSize, cubeSize, cubeSize, 0.0f, 2*cubeSize, 0.0f,
+        -cubeSize, cubeSize, -cubeSize, 0.0f, 2*cubeSize, 0.0f};
 
     glGenVertexArrays(1, &smallVAO);
     glGenBuffers(1, &smallVBO);
@@ -663,21 +653,22 @@ void Simulation::createDepthObject(){
     glUniformMatrix4fv(glGetUniformLocation(depthShaderProgram, "lightSpaceMatrix"), 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
 
 
-    if (square) {
+    if (square == 0) {
+        glm::mat4 modelDepthSphere = glm::mat4(1.0f);
+        modelDepthSphere = glm::translate(modelDepthSphere, center);
+        modelDepthSphere = glm::scale(modelDepthSphere, size);
+        glUniformMatrix4fv(glGetUniformLocation(depthShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelDepthSphere));
+        glBindVertexArray(sphereVAO);
+        glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+    } if(square == 1) {
         glm::mat4 modelDepth = glm::mat4(1.0f);
         modelDepth = glm::translate(modelDepth, center);
         modelDepth = glm::scale(modelDepth, size);
         glUniformMatrix4fv(glGetUniformLocation(depthShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelDepth));
         glBindVertexArray(smallVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
-    } else {
-        glm::mat4 modelDepthSphere1 = glm::mat4(1.0f);
-        modelDepthSphere1 = glm::translate(modelDepthSphere1, center);
-        modelDepthSphere1 = glm::scale(modelDepthSphere1, size);
-        glUniformMatrix4fv(glGetUniformLocation(depthShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelDepthSphere1));
-        glBindVertexArray(sphereVAO);
-        glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
-    }
+        
+    } 
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -688,15 +679,7 @@ void Simulation::createDepthObject(){
 void Simulation::createObject(unsigned int modelLoc, unsigned int objectColorLoc) {
     glUniform3fv(objectColorLoc, 1, glm::value_ptr(color));
 
-    if (square) {
-        glBindVertexArray(smallVAO);
-        
-        glm::mat4 smallCubeModel = glm::mat4(1.0f);
-        smallCubeModel = glm::translate(smallCubeModel, center);
-        smallCubeModel = glm::scale(smallCubeModel, size);
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(smallCubeModel));
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-    }else{
+    if (square == 0) {
         glBindVertexArray(sphereVAO);
         
         glm::mat4 sphereModel1 = glm::mat4(1.0f);
@@ -704,8 +687,17 @@ void Simulation::createObject(unsigned int modelLoc, unsigned int objectColorLoc
         sphereModel1 = glm::scale(sphereModel1, size);
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(sphereModel1));
         glDrawElements(GL_TRIANGLE_STRIP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+    }if(square == 1){
+        glBindVertexArray(smallVAO);
+        
+        glm::mat4 smallCubeModel = glm::mat4(1.0f);
+        smallCubeModel = glm::translate(smallCubeModel, center);
+        smallCubeModel = glm::scale(smallCubeModel, size);
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(smallCubeModel));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
     }
 }
+
 void Simulation::createWalls(unsigned int modelLoc, unsigned int objectColorLoc){
 
     glm::vec3 whiteColor(1.0f, 1.0f, 1.0f);
@@ -789,7 +781,7 @@ void Simulation::createWallAndObject(){
     createWalls(modelLoc, objectColorLoc);
 }
 
-void Simulation::createLightShere(){
+void Simulation::createLightSphere(){
     glUseProgram(sphereShaderProgram);
 
     glm::mat4 model = glm::mat4(1.0f);
@@ -833,7 +825,7 @@ Simulation::Simulation(GLFWwindow* window, int windowWidth, int windowHeight) : 
 
     createSphereVAOandVBOandEBO();
     createCubeVAOandVBO();
-
+    
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
 
@@ -850,7 +842,7 @@ Simulation::Simulation(GLFWwindow* window, int windowWidth, int windowHeight) : 
 
         createWallAndObject();
 
-        createLightShere();
+        createLightSphere();
 
         // Display FPS
         displayFPS(window);

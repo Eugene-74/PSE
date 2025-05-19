@@ -49,13 +49,14 @@ class Simulation {
     bool square = false;
     
     glm::vec3 center = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 size = glm::vec3(1.0f, 1.0f, 1.0f);
+    glm::vec3 size = glm::vec3(0.6f, 0.6f, 0.6f);
 
     float PlaceSize = 5.0f;
     float wallWidth = 0.001;
 
     glm::vec3 cameraPos = glm::vec3(2.0f, 0.0f, -2.0f);
     glm::vec3 lightPos = glm::vec3(0.0f, 2.0f, 0.0f);
+    glm::vec3 initialLightPos = glm::vec3(0.0f, 2.0f, 0.0f);
     glm::vec3 viewPos = glm::vec3(0.0f, 0.0f, 3.0f);
     bool mouvLight = false;
 
@@ -85,6 +86,7 @@ class Simulation {
     void createDepthMap();
     void createCubeVAOandVBO();
     void createSphereVAOandVBOandEBO();
+    void createLightSphere();
 
     void setLightSpaceMatrix();
 
