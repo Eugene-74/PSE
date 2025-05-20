@@ -1,0 +1,14 @@
+[
+{
+  "directory": "C:/Users/eugen/Documents/MesDocuments/git/PSE/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/OpenGLTextRendering.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\OpenGLTextRendering.dir\\simulation.cpp.obj -c C:\\Users\\eugen\\Documents\\MesDocuments\\git\\PSE\\simulation.cpp",
+  "file": "C:/Users/eugen/Documents/MesDocuments/git/PSE/simulation.cpp",
+  "output": "CMakeFiles/OpenGLTextRendering.dir/simulation.cpp.obj"
+},
+{
+  "directory": "C:/Users/eugen/Documents/MesDocuments/git/PSE/build",
+  "command": "C:\\msys64\\mingw64\\bin\\gcc.exe  @CMakeFiles/OpenGLTextRendering.dir/includes_C.rsp -g -o CMakeFiles\\OpenGLTextRendering.dir\\glad.c.obj -c C:\\Users\\eugen\\Documents\\MesDocuments\\git\\PSE\\glad.c",
+  "file": "C:/Users/eugen/Documents/MesDocuments/git/PSE/glad.c",
+  "output": "CMakeFiles/OpenGLTextRendering.dir/glad.c.obj"
+}
+]
