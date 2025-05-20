@@ -825,7 +825,7 @@ Simulation::Simulation(GLFWwindow* window, int windowWidth, int windowHeight) : 
 
     createSphereVAOandVBOandEBO();
     createCubeVAOandVBO();
-    
+
     while (!glfwWindowShouldClose(window)) {
         processInput(window);
 
@@ -844,12 +844,10 @@ Simulation::Simulation(GLFWwindow* window, int windowWidth, int windowHeight) : 
 
         createLightSphere();
 
-        // Display FPS
         displayFPS(window);
     
         glfwSwapBuffers(window);
         glfwPollEvents();
-
     }
 
     glfwTerminate();

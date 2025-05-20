@@ -12,10 +12,10 @@ link_directories(${CMAKE_SOURCE_DIR}/lib)
 link_directories(C:/msys64/mingw64/lib)
 
 # Ajouter les fichiers source
-add_executable(OpenGLTextRendering simulation.cpp glad.c)
+add_executable(simulation simulation.cpp glad.c)
 
 # Lier les bibliothèques
-target_link_libraries(OpenGLTextRendering
+target_link_libraries(simulation
     glfw3
     opengl32
     gdi32
