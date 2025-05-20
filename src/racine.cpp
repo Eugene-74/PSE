@@ -34,8 +34,7 @@ float fast_rsqrt(float number, float epsilon = -1) {
 }
 
 // racine avec méthode de Heron
-// marche pas avec des grands nombre
-float sqrtHerron(float number, float epsilon = 0.0001, int maxIterations = 1000) {
+float sqrtHerron(float number, float epsilon = 0.0001) {
     float x = number;
     // condition marche pas avec des grands nombre
     for (int j = 0; j < 10; j++) {
@@ -65,12 +64,12 @@ float simpleSqrt(float nbr, float epsilon) {
 
 float getX(){
     // float x = 2843843.44242;
+    // nombre aléatoire entre 1 et 100000 à virgule
     float x = 1.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (100000.0f - 1.0f)));
     return x;
 }
 
 int main() {
-    // float x = 25.0f;
     float epsilon = 0.0001f;
     
     const int iterations = 10000000;
@@ -123,8 +122,8 @@ int main() {
     std::cerr << "Average time for fast_rsqrt: " << average_duration << " nanoseconds" << " :: with average error : "<< error/iterations << std::endl;
     std::cerr << std::endl;
 
-    // Mesure du temps pour fast_rsqrt avec correction
     
+    // Mesure du temps pour fast_rsqrt avec correction
     error = 0;
     start = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < iterations; ++i) {
