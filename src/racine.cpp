@@ -34,9 +34,8 @@ float fast_rsqrt(float number, float epsilon = -1) {
 }
 
 // racine avec méthode de Heron
-float sqrtHerron(float number, float epsilon = 0.0001) {
+float sqrtHeron(float number, float epsilon = 0.0001) {
     float x = number;
-    // condition marche pas avec des grands nombre
     for (int j = 0; j < 10; j++) {
         x = (x + number / x) / 2;
     }
@@ -58,7 +57,6 @@ float simpleSqrt(float nbr, float epsilon) {
         i -= 1;
         racine += i * epsilon;
     }
-    // std ::cerr << "Nombre d'itération :" << iteration << std::endl;
     return racine;
 }
 
@@ -160,12 +158,12 @@ int main() {
         std::cerr << std::endl;
     }
 
-    // Mesure du temps pour sqrt Herron
+    // Mesure du temps pour sqrt Heron
     start = std::chrono::high_resolution_clock::now();
     error = 0;
     for (int i = 0; i < iterations; ++i) {
         float x = getX();
-        volatile float result = sqrtHerron(x);
+        volatile float result = sqrtHeron(x);
         float expectedValue = 1 / std::sqrt(x);
         error += std::abs(expectedValue - result);
     }
@@ -173,7 +171,7 @@ int main() {
     duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
 
     average_duration = static_cast<double>(duration) / iterations;
-    std::cerr << "Average time for sqrt Herron: " << average_duration << " nanoseconds" << " :: with average error : "<< error/iterations << std::endl;
+    std::cerr << "Average time for sqrt Heron: " << average_duration << " nanoseconds" << " :: with average error : "<< error/iterations << std::endl;
     std::cerr << std::endl;
 
     return 0;

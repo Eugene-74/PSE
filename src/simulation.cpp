@@ -5,7 +5,7 @@ std::map<int, std::string> SQRT_MODES = {
     {1, "sqrt"},
     {2, "bit shift"},
     {3, "bit shift and correct"},
-    {4, "Herron"}
+    {4, "Heron"}
 };
 
 // Déclaration de la fonction pour le shader de profondeur
@@ -62,7 +62,7 @@ const char* fragmentShaderSource = R"(
         return y;
     }
     
-    float sqrtHerron(float number) {
+    float sqrtHeron(float number) {
         float x = number;
         
         for (int i = 0; i < 10; i++) {
@@ -88,7 +88,7 @@ const char* fragmentShaderSource = R"(
             invLength = fastInvSqrtAndCorrect(lengthSq);
         } 
         else if (sqrtMode == 4) {
-            invLength = sqrtHerron(lengthSq);
+            invLength = sqrtHeron(lengthSq);
         }
         return v * invLength;
     }
