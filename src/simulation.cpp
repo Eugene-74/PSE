@@ -335,7 +335,7 @@ glm::vec3 color(0.0f, 0.0f, 1.0f);
 
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-float cameraSpeed = 0.05f;
+float cameraSpeed = 0.005f;
 
 float lastX = 400, lastY = 300;
 float yaw = -90.0f, pitch = 0.0f;
@@ -442,10 +442,9 @@ void Simulation::processInput(GLFWwindow *window) {
 // Fonction de callback pour le défilement de la souris (molette)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS) {
-        cameraSpeed += yoffset * 0.0001f;
+        cameraSpeed += yoffset * 0.001f;
         if (cameraSpeed < 0.0001f) cameraSpeed = 0.0001f; 
-    } else {
-    }
+    } 
 }
 
 // Fonction de callback pour la souris
