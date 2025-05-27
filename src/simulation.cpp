@@ -5,8 +5,7 @@ std::map<int, std::string> SQRT_MODES = {
     {1, "sqrt"},
     {2, "bit shift"},
     {3, "bit shift and correct"},
-    {4, "Herron"},
-    {5, "simple"}
+    {4, "Herron"}
 };
 
 // Déclaration de la fonction pour le shader de profondeur
